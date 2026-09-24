@@ -22,6 +22,7 @@ export function isDesktopExecutedToolCall(
   args: Record<string, unknown> | undefined
 ): boolean {
   return (
+    name === 'computer' ||
     isNativeFileTool(name) ||
     isUserLocalVfsToolCall(name, args) ||
     isCurrentBrowserToolName(name) ||

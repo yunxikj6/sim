@@ -44,6 +44,7 @@ setEnv({
   TABLE_ROW_TTL: undefined,
   MSHIP_MODEL_SELECTOR: undefined,
   MSHIP_PLAN_MODE: undefined,
+  MSHIP_COMPUTER_USE: undefined,
   AGENT_MEMORY_HISTORY: undefined,
   CREDENTIAL_GROUPS: undefined,
   KNOWLEDGE_MEMBER_ACCESS: undefined,
@@ -67,6 +68,18 @@ const enabled = (flag: string, ctx?: FeatureFlagContext) =>
 afterAll(resetEnvFlagsMock)
 
 describe('getFeatureFlags', () => {
+  it('gates computer use globally and defaults off without AppConfig', async () => {
+    withAppConfig({ 'mothership-computer-use': { enabled: true } })
+    expect(await isFeatureEnabled('mothership-computer-use')).toBe(true)
+    withAppConfig({ 'mothership-computer-use': { enabled: false, userIds: ['user-1'] } })
+    expect(await isFeatureEnabled('mothership-computer-use')).toBe(false)
+    setEnvFlags({ isAppConfigEnabled: false })
+    expect(await isFeatureEnabled('mothership-computer-use')).toBe(false)
+    envRef.MSHIP_COMPUTER_USE = true
+    expect(await isFeatureEnabled('mothership-computer-use')).toBe(true)
+    envRef.MSHIP_COMPUTER_USE = undefined
+  })
+
   beforeEach(() => {
     setEnvFlags({ isAppConfigEnabled: false })
     envRef.AGENT_MEMORY_HISTORY = undefined
