@@ -1,4 +1,5 @@
 import { browserToolRendererTimeoutMs, isCurrentBrowserToolName } from '@sim/browser-protocol'
+import { COMPUTER_USE_TOOL_TIMEOUT_MS } from '@sim/desktop-bridge'
 import { createLogger } from '@sim/logger'
 import { toError } from '@sim/utils/errors'
 import { isRecordLike } from '@sim/utils/object'
@@ -255,8 +256,8 @@ export function toolWatchdogTimeoutMs(toolName: string | undefined): number {
 
 /**
  * How long the resume gate may wait on one pending tool call. Permission
- * prompts wait as long as the permission wait itself. Browser calls share the renderer's
- * budget so authorization and native queueing cannot outlive the resume gate.
+ * prompts receive the long-running budget. Native calls share the renderer's
+ * budget so authorization and native queueing leave the full resume grace for result delivery.
  */
 export function pendingToolWaitBudgetMs(
   toolCall:
@@ -265,6 +266,7 @@ export function pendingToolWaitBudgetMs(
 ): number {
   if (toolCall?.status === 'awaiting_approval') return PERMISSION_WAIT_TIMEOUT_MS
   const executableName = toolCall?.execName ?? toolCall?.name
+  if (executableName === 'computer') return COMPUTER_USE_TOOL_TIMEOUT_MS
   if (executableName && isCurrentBrowserToolName(executableName)) {
     return browserToolRendererTimeoutMs(executableName, toolCall?.params)
   }
