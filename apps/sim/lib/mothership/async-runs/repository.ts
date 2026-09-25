@@ -1431,6 +1431,7 @@ export async function replaceTerminalAsyncToolCallResult(input: {
   status: AsyncTerminalStatus
   result: AsyncCompletionData | null
   error: string | null
+  expectedResult?: AsyncCompletionData
 }) {
   return await withDbSpan(
     TraceSpan.CopilotAsyncRunsMarkAsyncToolStatus,
@@ -1453,7 +1454,10 @@ export async function replaceTerminalAsyncToolCallResult(input: {
         .where(
           and(
             eq(copilotAsyncToolCalls.toolCallId, input.toolCallId),
-            eq(copilotAsyncToolCalls.status, input.status)
+            eq(copilotAsyncToolCalls.status, input.status),
+            input.expectedResult !== undefined
+              ? sql`${copilotAsyncToolCalls.result} = ${JSON.stringify(sanitizeValueForJsonb(input.expectedResult))}::jsonb`
+              : undefined
           )
         )
         .returning()
