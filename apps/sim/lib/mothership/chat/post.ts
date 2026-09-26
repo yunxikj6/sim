@@ -1194,7 +1194,8 @@ export async function handleUnifiedChatPost(req: NextRequest) {
               effort: effortChoice ?? currentChat?.effort ?? undefined,
               modelSelection: body.modelSelection,
             },
-            modelSelectorEnabled
+            modelSelectorEnabled,
+        body.mode === 'plan'
           )
         )
 

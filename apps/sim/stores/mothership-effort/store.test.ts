@@ -1,6 +1,9 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useMothershipEffortStore } from '@/stores/mothership-effort/store'
+import {
+  useMothershipEffortStore,
+  useMothershipPlanEffortStore,
+} from '@/stores/mothership-effort/store'
 
 beforeEach(() => {
   localStorage.clear()
@@ -48,5 +51,29 @@ describe('Build reasoning preferences', () => {
     expect(useMothershipEffortStore.getState().chatEfforts).toEqual({ 'chat-1': 'high' })
     store.dropChatEffort('chat-1', 'high')
     expect(useMothershipEffortStore.getState().chatEfforts).toEqual({})
+  })
+})
+
+describe('Independent Plan preferences', () => {
+  it('keeps Plan defaults and saved overrides separate from Build', async () => {
+    useMothershipPlanEffortStore.getState().reset()
+    expect(useMothershipPlanEffortStore.getState()).toMatchObject({
+      newChatEffort: null,
+      modelSelection: { model: 'claude-opus-5-5', fastMode: false },
+    })
+    useMothershipPlanEffortStore.getState().setModel('gpt-6-astra')
+    useMothershipPlanEffortStore.getState().setNewChatEffort('xhigh')
+    const saved = localStorage.getItem('mothership-plan-effort')!
+    useMothershipPlanEffortStore.getState().reset()
+    localStorage.setItem('mothership-plan-effort', saved)
+    await useMothershipPlanEffortStore.persist.rehydrate()
+    expect(useMothershipPlanEffortStore.getState()).toMatchObject({
+      newChatEffort: null,
+      modelSelection: { model: 'gpt-6-astra', fastMode: false },
+    })
+    expect(useMothershipEffortStore.getState()).toMatchObject({
+      newChatEffort: null,
+      modelSelection: { model: 'gpt-6-astra', fastMode: false },
+    })
   })
 })

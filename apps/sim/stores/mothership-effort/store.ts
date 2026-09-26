@@ -30,11 +30,12 @@ interface MothershipEffortState {
   reset: () => void
 }
 
+function createMothershipEffortStore(plan: boolean) {
 const initialState: Pick<
   MothershipEffortState,
   'modelSelection' | 'newChatEffort' | 'chatEfforts'
 > = {
-  modelSelection: { model: 'gpt-6-astra', fastMode: false },
+  modelSelection: { model: plan ? 'claude-opus-5-5' : 'gpt-6-astra', fastMode: false },
   newChatEffort: null,
   chatEfforts: {},
 }
@@ -42,10 +43,10 @@ const initialState: Pick<
 function withModelSelection(
   modelSelection: ModelSelection
 ): Pick<MothershipEffortState, 'modelSelection'> {
-  return { modelSelection: resolveMothershipModelSettings({ modelSelection }, true).modelSelection }
+  return { modelSelection: resolveMothershipModelSettings({ modelSelection }, true, plan).modelSelection }
 }
 
-export const useMothershipEffortStore = create<MothershipEffortState>()(
+return create<MothershipEffortState>()(
   devtools(
     persist(
       (set) => ({
@@ -70,7 +71,7 @@ export const useMothershipEffortStore = create<MothershipEffortState>()(
         reset: () => set(initialState),
       }),
       {
-        name: 'mothership-effort',
+        name: plan ? 'mothership-plan-effort' : 'mothership-effort',
         partialize: ({ modelSelection }) => ({ modelSelection }),
         merge: (persistedState, currentState) => {
           const selection = ModelSelectionSchema.safeParse(toRecord(persistedState).modelSelection)
@@ -81,6 +82,11 @@ export const useMothershipEffortStore = create<MothershipEffortState>()(
         },
       }
     ),
-    { name: 'mothership-effort-store' }
+    { name: plan ? 'mothership-plan-effort-store' : 'mothership-effort-store' }
   )
 )
+
+}
+
+export const useMothershipEffortStore = createMothershipEffortStore(false)
+export const useMothershipPlanEffortStore = createMothershipEffortStore(true)

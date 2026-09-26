@@ -41,15 +41,22 @@ export function mothershipEffortOptions(model: ModelSelection['model']) {
 /** Shared by the visible controls, send path and server admission so hidden preferences cannot leak. */
 export function resolveMothershipModelSettings(
   settings: { effort?: MothershipEffort; modelSelection?: ModelSelection },
-  advanced: boolean
+  advanced: boolean,
+  plan = false
 ): { effort: MothershipEffort; modelSelection: ModelSelection } {
   let effort = settings.effort ?? DEFAULT_MOTHERSHIP_EFFORT
   if (!advanced) {
     if (effort === 'none') effort = DEFAULT_MOTHERSHIP_EFFORT
-    if (effort === 'max') effort = 'xhigh'
-    return { effort, modelSelection: { model: 'gpt-6-astra', fastMode: false } }
+    if (!plan && effort === 'max') effort = 'xhigh'
+    return {
+      effort,
+      modelSelection: { model: plan ? 'claude-opus-5-5' : 'gpt-6-astra', fastMode: false },
+    }
   }
-  const stored = settings.modelSelection ?? { model: 'gpt-6-astra', fastMode: false }
+  const stored = settings.modelSelection ?? {
+    model: plan ? 'claude-opus-5-5' : 'gpt-6-astra',
+    fastMode: false,
+  }
   const model = stored.model === 'claude-opus-5' ? 'claude-opus-5-5' : stored.model
   if (effort === 'none' && model !== 'gpt-6-sol') effort = DEFAULT_MOTHERSHIP_EFFORT
   return {
