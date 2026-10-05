@@ -9,6 +9,8 @@ import type { LocalFileAccess, LocalFilesystemService } from '@/main/local-files
 
 const MAX_PENDING_REQUESTS = 32
 
+class ExpiredLocalFileRequestError extends Error {}
+
 interface LocalFilePermissionContext {
   parent: BrowserWindow
   origin: string
@@ -28,15 +30,18 @@ function nativePath(value: unknown): string {
 }
 
 function assertCurrent(context: LocalFilePermissionContext): void {
-  context.signal.throwIfAborted()
-  if (context.parent.isDestroyed() || !context.isCurrent())
-    throw new Error('This local file request expired. Ask again in the current chat.')
+  if (context.signal.aborted || context.parent.isDestroyed() || !context.isCurrent())
+    throw new ExpiredLocalFileRequestError(
+      'This local file request expired. Ask again in the current chat.'
+    )
 }
 
 async function revalidate(context: LocalFilePermissionContext): Promise<void> {
   assertCurrent(context)
   if (!(await context.revalidate()))
-    throw new Error('This local file tool call is no longer pending or its arguments changed.')
+    throw new ExpiredLocalFileRequestError(
+      'This local file tool call is no longer pending or its arguments changed.'
+    )
   assertCurrent(context)
 }
 
@@ -67,19 +72,30 @@ export class LocalFilePermissions {
       throw new Error('The path is not a regular file or directory.')
     const folder = info.isDirectory() ? path : dirname(path)
     const key = JSON.stringify([context.generation, context.origin, folder])
-    let pending = this.pending.get(key)
-    if (!pending) {
-      if (this.pending.size >= MAX_PENDING_REQUESTS)
-        throw new Error('Too many local file requests are waiting for permission. Try again later.')
-      const decision = this.queue.then(() => this.requestFolder(folder, context))
-      this.queue = decision.then(
-        () => undefined,
-        () => undefined
-      )
-      pending = decision.finally(() => this.pending.delete(key))
-      this.pending.set(key, pending)
+    while (true) {
+      let pending = this.pending.get(key)
+      const joinedDecision = pending !== undefined
+      if (!pending) {
+        if (this.pending.size >= MAX_PENDING_REQUESTS)
+          throw new Error(
+            'Too many local file requests are waiting for permission. Try again later.'
+          )
+        const decision = this.queue.then(() => this.requestFolder(folder, context))
+        this.queue = decision.then(
+          () => undefined,
+          () => undefined
+        )
+        pending = decision.finally(() => this.pending.delete(key))
+        this.pending.set(key, pending)
+      }
+      try {
+        await pending
+        break
+      } catch (error) {
+        if (!joinedDecision || !(error instanceof ExpiredLocalFileRequestError)) throw error
+        await revalidate(context)
+      }
     }
-    await pending
     const access = await this.filesystem.nativeAccess(path)
     if (!access) throw new Error('The approved folder is no longer available.')
     return this.authorizedAccess(access, context)

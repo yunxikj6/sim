@@ -29,6 +29,7 @@ test('native file tools remember folder consent across chats and restarts until 
   writeFileSync(join(source, 'image.png'), Buffer.from(png, 'base64'))
   const claimed = new Set<string>()
   const expireAfterAuthorization = new Set<string>()
+  const authorizedCalls = new Set<string>()
   let signedIn = true
   const calls: Record<
     string,
@@ -80,6 +81,7 @@ test('native file tools remember folder consent across chats and restarts until 
         for await (const chunk of request) body += chunk.toString()
         const input = JSON.parse(body)
         const call = calls[input.toolCallId]
+        authorizedCalls.add(input.toolCallId)
         if (!call || (input.claim && claimed.has(input.toolCallId))) {
           response.writeHead(call ? 409 : 403, { 'Content-Type': 'application/json' }).end('{}')
           return
@@ -419,6 +421,21 @@ test('native file tools remember folder consent across chats and restarts until 
       const again = await requestPermission({ operation: 'read', toolCallId: 'cancelled' })
       await again.prompt.getByRole('button', { name: "Don't allow", exact: true }).click()
       expect(await again.result).toMatchObject({ ok: false })
+    })
+    await test.step('a live caller takes over consent when the first caller cancels', async () => {
+      calls.owner = { toolName: 'read_local_file', args: { path: join(outside, 'private.txt') } }
+      calls.waiter = { toolName: 'read_local_file', args: { path: outside } }
+      const owner = await requestPermission({ operation: 'read', toolCallId: 'owner' })
+      const waiter = invoke({ operation: 'read', toolCallId: 'waiter' })
+      void waiter.catch(() => {})
+      await expect.poll(() => authorizedCalls.has('waiter')).toBe(true)
+      const nextPrompt = app?.waitForEvent('window', { timeout: 5000 })
+      await invoke({ operation: 'cancel', toolCallId: 'owner' })
+      expect(await owner.result).toMatchObject({ ok: false })
+      const successor = await nextPrompt
+      if (!successor) throw new Error('The remaining request did not receive a consent prompt')
+      await successor.getByRole('button', { name: "Don't allow", exact: true }).click()
+      expect(await waiter).toMatchObject({ ok: false })
     })
     await test.step('consent escapes direction controls in folder names', async () => {
       const folder = join(root, 'Bidi\u061c\u200e\u200f')

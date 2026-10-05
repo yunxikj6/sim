@@ -52,10 +52,16 @@ bun run dev                 # bundle + launch against https://www.sim.ai
 SIM_DESKTOP_ORIGIN=http://localhost:3000 bun run dev   # against local sim
 ```
 
-- `bun run test` — vitest unit suite (electron is mocked; runs anywhere).
+- `bun run test` / `test:watch` — compile the native modules, then run Vitest (Electron is mocked).
 - `bun run test:e2e` — Playwright `_electron` smoke suite against a fixture origin (macOS, real Electron window).
 - `bun run type-check` / `lint:check` — standard workspace checks; CI picks these up automatically via `turbo run`.
 - `SIM_DESKTOP_USER_DATA=<dir>` isolates settings/partition state (used by e2e).
+
+Builds and tests require Node.js on `PATH` with Node-API headers at
+`<node-prefix>/include/node/node_api.h`, plus a C++17 compiler: Xcode Command Line
+Tools (`xcrun clang++`) on macOS, or `c++` on Linux. Install a Node.js distribution
+that includes its development headers; Bun alone is insufficient for this build.
+Linux supports the unit suite; packaging and desktop E2E run on macOS.
 
 The main process and two preloads are bundled by esbuild into `dist/main.cjs`, `dist/preload.cjs`, and `dist/browser-preload.cjs`, including `electron-updater` and the `@sim/*` packages. The native `@lydell/node-pty` packages stay external so Electron can load their architecture-specific prebuilds from the packaged runtime `node_modules`; `npmRebuild` remains disabled because those Node-API prebuilds are already ABI-stable. There is no `package-lock.json`.
 
