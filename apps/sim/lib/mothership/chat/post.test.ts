@@ -1488,8 +1488,7 @@ describe('handleUnifiedChatPost', () => {
           mode: 'plan',
           effort: 'medium',
           modelSelection: { model: 'claude-opus-5-5', fastMode: false },
-        }),
-        expect.anything()
+        })
       )
     }
   )
