@@ -166,43 +166,49 @@ describe('tool result size diagnostics', () => {
     settleSimToolExecution.mockResolvedValue(undefined)
   })
 
-  it('keeps large visual observations out of UI replay while preserving the model result', async () => {
-    const data = Buffer.alloc(850_000, 1).toString('base64')
-    const output = {
-      exitCode: 0,
-      stdout: JSON.stringify({ name: 'manual.png', representation: 'visual' }),
-      stderr: '',
-      observations: [{ name: 'manual.png', mediaType: 'image/png', data }],
+  it.each(['image/png', 'invalid'])(
+    'keeps %s visual bytes out of UI replay while preserving the model result',
+    async (mediaType) => {
+      const data = Buffer.alloc(850_000, 1).toString('base64')
+      const output = {
+        exitCode: 0,
+        stdout: JSON.stringify({ name: 'manual.png', representation: 'visual' }),
+        stderr: '',
+        observations: [{ name: 'manual.png', mediaType, data }],
+      }
+      executeTool.mockResolvedValueOnce({ success: true, output })
+      const toolCall = { ...buildPendingToolCall(), name: 'cli_files_read', execName: 'sim_cli' }
+      const completion = await executeToolAndReport(
+        toolCall.id,
+        buildStreamingContext(toolCall),
+        {
+          userId: 'user-1',
+          workflowId: 'workflow-1',
+          resolvedSecretTraceRegistry: new ResolvedSecretTraceRegistry(),
+        },
+        { onEvent }
+      )
+      expect(completion.status).toBe(MothershipStreamV1ToolOutcome.success)
+      expect(completion.data).toEqual(output)
+      expect(completeAsyncToolCall).toHaveBeenCalledWith(
+        expect.objectContaining({ result: output }),
+        expect.any(String)
+      )
+      expect(onEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MothershipStreamV1EventType.tool,
+          payload: expect.objectContaining({
+            success: true,
+            output: {
+              ...output,
+              observations: mediaType === 'image/png' ? [{ name: 'manual.png', mediaType }] : [],
+            },
+          }),
+        })
+      )
+      expect(Buffer.byteLength(JSON.stringify(onEvent.mock.calls))).toBeLessThan(10_000)
     }
-    executeTool.mockResolvedValueOnce({ success: true, output })
-    const toolCall = { ...buildPendingToolCall(), name: 'cli_files_read', execName: 'sim_cli' }
-    const completion = await executeToolAndReport(
-      toolCall.id,
-      buildStreamingContext(toolCall),
-      {
-        userId: 'user-1',
-        workflowId: 'workflow-1',
-        resolvedSecretTraceRegistry: new ResolvedSecretTraceRegistry(),
-      },
-      { onEvent }
-    )
-    expect(completion.status).toBe(MothershipStreamV1ToolOutcome.success)
-    expect(completion.data).toEqual(output)
-    expect(completeAsyncToolCall).toHaveBeenCalledWith(
-      expect.objectContaining({ result: output }),
-      expect.any(String)
-    )
-    expect(onEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: MothershipStreamV1EventType.tool,
-        payload: expect.objectContaining({
-          success: true,
-          output: { ...output, observations: [{ name: 'manual.png', mediaType: 'image/png' }] },
-        }),
-      })
-    )
-    expect(Buffer.byteLength(JSON.stringify(onEvent.mock.calls))).toBeLessThan(10_000)
-  })
+  )
 })
 
 describe('toolWatchdogTimeoutMs', () => {

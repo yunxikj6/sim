@@ -24,7 +24,10 @@ import {
   useMothershipChatHistory,
   useSetMothershipChatEffort,
 } from '@/hooks/queries/mothership-chats'
-import { useMothershipEffortStore, useMothershipPlanEffortStore } from '@/stores/mothership-effort/store'
+import {
+  useMothershipEffortStore,
+  useMothershipPlanEffortStore,
+} from '@/stores/mothership-effort/store'
 
 /** Model, reasoning effort, and Fast mode for Build chat composers. */
 export function ModelSelector({ plan = false }: { plan?: boolean }) {
@@ -47,9 +50,10 @@ export function ModelSelector({ plan = false }: { plan?: boolean }) {
     advanced,
     plan
   )
-  const options = advanced || plan
-    ? mothershipEffortOptions(modelSelection.model)
-    : MOTHERSHIP_SIMPLE_EFFORT_OPTIONS
+  const options =
+    advanced || plan
+      ? mothershipEffortOptions(modelSelection.model)
+      : MOTHERSHIP_SIMPLE_EFFORT_OPTIONS
   const setEffort = (choice: MothershipEffort) => {
     if (chatId) saveChatEffort(choice)
     else setNewChatEffort(choice)

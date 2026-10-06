@@ -2787,6 +2787,13 @@
       "when": 1791223733180,
       "tag": "0398_benchmark_run_as_user",
       "breakpoints": true
+    },
+    {
+      "idx": 399,
+      "version": "7",
+      "when": 1791244416520,
+      "tag": "0399_benchmark_automatic_score",
+      "breakpoints": true
     }
   ]
 }

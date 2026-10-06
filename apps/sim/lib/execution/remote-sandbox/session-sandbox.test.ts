@@ -772,13 +772,15 @@ describe('session sandbox lease', () => {
   })
 
   it('trusts a lease granted by a slow reconnect for the whole call, then refreshes nothing', async () => {
+    let now = Date.now()
+    vi.spyOn(Date, 'now').mockImplementation(() => now)
     const { handle, calls } = fakeSandbox('sb-covered')
     let grantedUntilMs = 0
     handle.outlives = (lifetimeMs) => grantedUntilMs >= Date.now() + lifetimeMs
     mockFindSessionSandbox.mockImplementation(
       async (_key: string, options: { lifetimeMs?: number }) => {
         grantedUntilMs = Date.now() + (options.lifetimeMs ?? 0)
-        await sleep(20)
+        now += 20
         return handle
       }
     )
